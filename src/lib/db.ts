@@ -1,0 +1,22 @@
+import { Prisma, PrismaClient } from "@prisma/client";
+
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
+  });
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+export type Tx = Prisma.TransactionClient;
+export type Db = PrismaClient | Tx;
+
+export function transaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return prisma.$transaction(fn, { maxWait: 10_000, timeout: 20_000 });
+}
+
+export function isUniqueViolation(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+}

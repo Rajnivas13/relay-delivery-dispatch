@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  DISPATCHER
+  RIDER
+  VIEWER
+}
+
+enum JobStatus {
+  NEW
+  READY_FOR_ASSIGNMENT
+  AWAITING_CONFIRMATION
+  ACCEPTED
+  PICKED_UP
+  DELIVERED
+  MANUAL_QUEUE
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum RiderAvailability {
+  ONLINE
+  OFFLINE
+  ON_BREAK
+}
+
+enum AssignmentStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+  COMPLETED
+}
+
+enum ActorType {
+  USER
+  API_TOKEN
+  SYSTEM
+  CRON
+}
+
+model Zone {
+  id     String      @id
+  name   String
+  riders RiderZone[]
+}
+
+model ZoneTravelTime {
+  fromZoneId String
+  toZoneId   String
+  minutes    Int
+
+  @@id([fromZoneId, toZoneId])
+}
+
+model Rider {
+  id             String            @id @default(cuid())
+  code           String            @unique
+  name           String
+  phone          String?
+  availability   RiderAvailability @default(OFFLINE)
+  currentZoneId  String
+  capacityUnits  Int
+  reservedUnits  Int               @default(0)
+  activeJobCount Int               @default(0)
+  maxActiveJobs  Int               @default(3)
+  offersReceived Int               @default(0)
+  offersAccepted Int               @default(0)
+  version        Int               @default(0)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  zones       RiderZone[]
+  assignments Assignment[]
+  user        User?
+
+  @@index([availability])
+}
+
+model RiderZone {
+  riderId String
+  zoneId  String
+  rider   Rider  @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  zone    Zone   @relation(fields: [zoneId], references: [id])
+
+  @@id([riderId, zoneId])
+  @@index([zoneId])
+}
+
+model Job {
+  id                  String    @id @default(cuid())
+  reference           String    @unique
+  idempotencyKey      String?   @unique
+  requestHash         String
+  pickupZoneId        String
+  dropZoneId          String
+  loadUnits           Int
+  priority            Priority  @default(NORMAL)
+  deadlineAt          DateTime?
+  customerName        String?
+  notes               String?
+  status              JobStatus @default(NEW)
+  manualQueueReason   String?
+  manualQueuedAt      DateTime?
+  currentAssignmentId String?   @unique
+  version             Int       @default(0)
+  createdById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  assignments     Assignment[]
+  events          JobEvent[]
+  recommendations Recommendation[]
+
+  @@index([status, createdAt])
+  @@index([status, pickupZoneId])
+  @@index([status, manualQueuedAt])
+}
+
+model Assignment {
+  id                 String           @id @default(cuid())
+  jobId              String
+  riderId            String
+  status             AssignmentStatus @default(PENDING)
+  reservedUnits      Int
+  offeredAt          DateTime
+  expiresAt          DateTime
+  respondedAt        DateTime?
+  endedAt            DateTime?
+  endReason          String?
+  isOverride         Boolean          @default(false)
+  overrideReason     String?
+  recommendedRiderId String?
+  score              Float?
+  assignedByType     ActorType
+  assignedById       String?
+  assignedByName     String?
+  createdAt          DateTime         @default(now())
+
+  job   Job   @relation(fields: [jobId], references: [id])
+  rider Rider @relation(fields: [riderId], references: [id])
+
+  @@index([jobId, createdAt])
+  @@index([riderId, status])
+  @@index([status, expiresAt])
+}
+
+model JobEvent {
+  id           Int        @id @default(autoincrement())
+  jobId        String
+  type         String
+  fromStatus   JobStatus?
+  toStatus     JobStatus?
+  actorType    ActorType
+  actorId      String?
+  actorName    String?
+  assignmentId String?
+  details      Json       @default("{}")
+  createdAt    DateTime   @default(now())
+
+  job Job @relation(fields: [jobId], references: [id])
+
+  @@index([jobId, id])
+  @@index([type, createdAt])
+}
+
+model Recommendation {
+  id             String   @id @default(cuid())
+  jobId          String
+  fingerprint    String
+  strategy       String
+  topRiderId     String?
+  candidates     Json
+  ai             Json?
+  aiModel        String?
+  aiLatencyMs    Int?
+  usedFallback   Boolean  @default(false)
+  fallbackReason String?
+  createdAt      DateTime @default(now())
+
+  job Job @relation(fields: [jobId], references: [id])
+
+  @@index([jobId, createdAt])
+}
+
+model Setting {
+  id                         Int       @id @default(1)
+  confirmationTimeoutSeconds Int       @default(7200)
+  clockOffsetSeconds         Int       @default(0)
+  lastSweepAt                DateTime?
+  lastSweepSource            String?
+  lastSweepExpired           Int?
+  updatedAt                  DateTime  @updatedAt
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role
+  riderId      String?  @unique
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rider     Rider?     @relation(fields: [riderId], references: [id])
+  apiTokens ApiToken[]
+}
+
+model ApiToken {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  prefix     String
+  tokenHash  String    @unique
+  scopes     String[]
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model LoginAttempt {
+  id        Int      @id @default(autoincrement())
+  key       String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}

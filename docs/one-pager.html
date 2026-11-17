@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>RELAY: Delivery Dispatch Desk (one-page summary)</title>
+<style>
+  @page { size: A4 landscape; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 297mm; height: 210mm; overflow: hidden;
+    font-family: "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+    color: #0f172a; background: #ffffff; font-size: 8.7pt; line-height: 1.32;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .page { padding: 8mm 10mm 7mm; height: 100%; display: flex; flex-direction: column; gap: 3.2mm; }
+  header { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 2px solid #6366f1; padding-bottom: 2.4mm; }
+  h1 { margin: 0; font-size: 20pt; letter-spacing: -0.02em; }
+  h1 span { color: #6366f1; }
+  .tag { color: #475569; font-size: 10pt; margin-top: 1mm; }
+  .meta { text-align: right; color: #64748b; font-size: 8.4pt; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3mm; flex: 1; min-height: 0; }
+  .card { border: 1px solid #e2e8f0; border-radius: 3mm; padding: 2.8mm 3.4mm; background: #f8fafc; }
+  .card.accent { background: #eef2ff; border-color: #c7d2fe; }
+  .card.ai { background: #fdf4ff; border-color: #f5d0fe; }
+  .card.warn { background: #fff7ed; border-color: #fed7aa; }
+  h2 { margin: 0 0 1.4mm; font-size: 10.6pt; color: #312e81; display: flex; align-items: center; gap: 1.6mm; }
+  h2 .n { display: inline-flex; width: 5mm; height: 5mm; border-radius: 50%; background: #6366f1; color: #fff; font-size: 8pt; align-items: center; justify-content: center; }
+  p { margin: 0 0 1.2mm; }
+  ul { margin: 0; padding-left: 4mm; }
+  li { margin: 0 0 0.7mm; }
+  .col { display: flex; flex-direction: column; gap: 3.2mm; min-height: 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 1mm; align-items: center; font-size: 8.2pt; margin: 1mm 0 1.4mm; }
+  .flow b { background: #fff; border: 1px solid #c7d2fe; border-radius: 1.6mm; padding: 0.6mm 1.6mm; font-weight: 600; color: #3730a3; }
+  .flow i { color: #94a3b8; font-style: normal; }
+  .flow b.q { border-color: #fdba74; color: #9a3412; background: #fff7ed; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.4pt; }
+  td, th { padding: 0.6mm 1mm; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+  th { color: #475569; font-weight: 600; }
+  .arch { font-family: Consolas, "Cascadia Mono", monospace; font-size: 7pt; overflow: hidden; background: #0f172a; color: #e2e8f0; border-radius: 2mm; padding: 2mm 2.4mm; white-space: pre; line-height: 1.32; margin: 1mm 0 1.4mm; }
+  .arch .k { color: #a5b4fc; } .arch .g { color: #86efac; } .arch .p { color: #f0abfc; }
+  .pill { display: inline-block; font-size: 7.6pt; padding: 0.3mm 1.4mm; border-radius: 1.4mm; background: #e0e7ff; color: #3730a3; margin: 0 0.6mm 0.6mm 0; }
+  footer { display: flex; justify-content: space-between; color: #64748b; font-size: 8pt; border-top: 1px solid #e2e8f0; padding-top: 1.6mm; }
+  strong { color: #0f172a; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div>
+      <h1>RELAY <span>Dispatch Desk</span></h1>
+      <div class="tag">From intake to doorstep: explainable rider recommendations with AI on top, and automatic exception handling.</div>
+    </div>
+    <div class="meta">Next.js 15 · PostgreSQL · Prisma · Auth.js · OpenRouter<br/>Deployed on Vercel + Neon · 100+ automated tests + Playwright e2e</div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <div class="card">
+        <h2><span class="n">1</span>Problem and solution</h2>
+        <p>Dispatchers juggle orders in spreadsheets and chat. Riders silently ignore offers, jobs get stuck "assigned", capacity is double-booked, and nobody can say <em>why</em> a job is late.</p>
+        <p><strong>RELAY</strong> is one desk where every job has a strict lifecycle, every offer has a deadline, every failure lands in a <strong>Manual Queue</strong> with a reason, and every action is in an append-only audit trail.</p>
+      </div>
+      <div class="card accent">
+        <h2><span class="n">2</span>Dispatcher workflow</h2>
+        <div class="flow"><b>Create job</b><i>→</i><b>Review ranked riders</b><i>→</i><b>Assign / override + reason</b><i>→</i><b>Rider confirms</b><i>→</i><b>Picked up</b><i>→</i><b>Delivered</b></div>
+        <ul>
+          <li><strong>Dashboard</strong> answers "what next?": KPIs plus <em>Needs attention</em> (Manual Queue, offers about to expire, deadlines at risk, jobs unassigned for more than 10 min).</li>
+          <li><strong>Job page</strong>: recommendations with score breakdown, why other riders were excluded, a live countdown, and the full timeline.</li>
+          <li><strong>Rider app</strong> (mobile web): accept or reject offers, mark pickup and delivery, set availability.</li>
+          <li>Idempotent creation (<code>Idempotency-Key</code>) means double submits never create two jobs.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card ai">
+        <h2><span class="n">3</span>Recommendations: code decides, AI refines</h2>
+        <div class="flow"><b>Hard rules</b><i>→</i><b>Score /100</b><i>→</i><b>AI re-ranks top 5</b><i>→</i><b>Validated or fallback</b></div>
+        <ul>
+          <li><strong>Eligibility</strong>: online, serves both zones, enough free capacity, under job limit, has not rejected this job.</li>
+          <li><strong>Score</strong>: travel 35 · capacity 20 · workload 20 · deadline slack 15 · reliability 10 (HIGH/URGENT shift weight to speed). Deterministic tie-breaks.</li>
+          <li><strong>OpenRouter LLM</strong> predicts acceptance probability and ETA with a one-line reason per rider. Strict JSON schema, 8 s timeout, and an allow-list of eligible ids. Any invalid output falls back to the score ranking.</li>
+          <li>Overrides need a reason and are compared with what the dispatcher actually saw.</li>
+        </ul>
+      </div>
+      <div class="card warn">
+        <h2><span class="n">4</span>Automatic queue handling</h2>
+        <div class="flow"><b>AWAITING_CONFIRMATION</b><i>→ 2 h (configurable) →</i><b class="q">MANUAL_QUEUE</b><i>→</i><b>Reassign</b></div>
+        <ul>
+          <li>Each offer gets <code>expiresAt</code>. A timeout marks it EXPIRED (history kept), <strong>releases capacity</strong>, records the reason, and re-opens the job.</li>
+          <li><strong>Lazy expiry</strong> on every read and write, plus <strong>Vercel Cron</strong> as the safety net. The same idempotent sweep (<code>SKIP LOCKED</code>) expires each offer exactly once.</li>
+          <li>A rejection follows the same path. The AI <strong>Suggest</strong> button proposes reassign, wait, cancel or escalate.</li>
+          <li>A simulated clock and adjustable threshold let reviewers test without waiting 2 hours.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card">
+        <h2><span class="n">5</span>Architecture and data model</h2>
+<div class="arch"><span class="k">UI</span> (React) ─┐   <span class="k">API tokens</span> ─┐   <span class="k">Vercel Cron</span>
+             ▼                  ▼          ▼
+  <span class="g">withAuth</span> route handlers (Zod, roles, scopes)
+             ▼
+  <span class="g">Services</span>: jobs · assignment · timeout · reco
+             ▼                         ▼
+  <span class="g">Domain</span> (pure): state machine,     <span class="p">AI adapter</span>
+  eligibility, scoring             (OpenRouter)
+             ▼
+  <span class="k">PostgreSQL</span>: row locks · partial unique index
+              · CHECK constraints · events</div>
+        <table>
+          <tr><th>Job</th><td>customer order, one lifecycle, <code>version</code>, unique reference and idempotency key</td></tr>
+          <tr><th>Assignment</th><td>one offer to one rider: outcome, expiry, reserved units, override</td></tr>
+          <tr><th>Rider</th><td>zones, availability, capacity / reserved, job limit, acceptance history</td></tr>
+          <tr><th>JobEvent</th><td>append-only audit trail with actor and details</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h2><span class="n">6</span>Key trade-off</h2>
+        <p><strong>One Next.js app on Postgres, with no queues or workers.</strong> Row locks, conditional updates and constraints prevent double assignment and overbooking and give exactly-once timeouts. The cost: with no timer at <code>expiresAt</code>, an overdue row flips on the next read, write or cron run. It is never <em>visible</em> as stale, but it is not push-precise.</p>
+      </div>
+      <div class="card accent">
+        <h2><span class="n">7</span>With one more week</h2>
+        <ul>
+          <li>Delayed-queue timers (QStash) and SSE live updates, plus rider push notifications.</li>
+          <li>Train an acceptance model on assignment history, and track override and timeout rates.</li>
+          <li>Multi-city: per-region thresholds, shifts, and auto re-offer policies for URGENT jobs.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Roles: Admin · Dispatcher · Viewer · Rider; every API route protected (session or scoped token)</span>
+    <span>Docs: README · API.md · SYSTEM_DESIGN.md · ENGINEERING_NOTES.md · /docs (OpenAPI)</span>
+  </footer>
+</div>
+</body>
+</html>
